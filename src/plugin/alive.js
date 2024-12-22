@@ -9,10 +9,13 @@ const alive = async (m, Matrix) => {
   const hours = Math.floor((uptimeSeconds % (3600 * 24)) / 3600);
   const minutes = Math.floor((uptimeSeconds % 3600) / 60);
   const seconds = Math.floor(uptimeSeconds % 60);
-  const timeString = `${String(days).padStart(2, '0')}-${String(hours).padStart(2, '0')}-${String(minutes).padStart(2, '0')}-${String(seconds).padStart(2, '0')}`;
+  const timeString = `${String(days).padStart(2, '0')}:${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
   const prefix = config.PREFIX;
   const cmd = m.body.startsWith(prefix) ? m.body.slice(prefix.length).split(' ')[0].toLowerCase() : '';
-  const text = m.body.slice(prefix.length + cmd.length).trim();
+
+  // Sender's JID
+  const jid = m.from || m.key.remoteJid;
+  console.log('Sender JID:', jid); // Debugging JID
 
   if (['alive', 'uptime', 'runtime'].includes(cmd)) {
     const width = 800;
@@ -25,57 +28,32 @@ const alive = async (m, Matrix) => {
     const y = (height / 2) - (textHeight / 2);
     image.print(font, x, y, timeString, width, Jimp.HORIZONTAL_ALIGN_CENTER | Jimp.VERTICAL_ALIGN_MIDDLE);
     const buffer = await image.getBufferAsync(Jimp.MIME_PNG);
-    
-    const uptimeMessage = `*🧿𝗥𝗢𝗠𝗘𝗞-𝗫𝗗🪀 Status Overview*
+
+    const uptimeMessage = `*🤖 ROMEK-XD Status Overview*
 _________________________________________
 
-*🌅 ${days} Day(s)*
-*📟 ${hours} Hour(s)*
-*🔭 ${minutes} Minute(s)*
-*⏰ ${seconds} Second(s)*
+*📆 Uptime:* ${days} Day(s), ${hours} Hour(s), ${minutes} Minute(s), ${seconds} Second(s)
+
+*📌 Bot is Running Smoothly!*
 _________________________________________
 `;
-    
-    const buttons = [
-      {
-        "name": "quick_reply",
-        "buttonParamsJson": JSON.stringify({
-          display_text: "MENU",
-          id: `${prefix}menu`
-        })
-      },
-      {
-        "name": "quick_reply",
-        "buttonParamsJson": JSON.stringify({
-          display_text: "PING",
-          id: `${prefix}ping`
-        })
-      }
-    ];
 
-    const msg = generateWAMessageFromContent(m.from, {
+    const msg = generateWAMessageFromContent(jid, {
       viewOnceMessage: {
         message: {
-          messageContextInfo: {
-            deviceListMetadata: {},
-            deviceListMetadataVersion: 2
-          },
           interactiveMessage: proto.Message.InteractiveMessage.create({
             body: proto.Message.InteractiveMessage.Body.create({
-              text: uptimeMessage
+              text: uptimeMessage,
             }),
             footer: proto.Message.InteractiveMessage.Footer.create({
-              text: "© ᴘᴏᴡᴇʀᴅ ʙʏ romek-xᴅ-ʙᴏᴛ"
+              text: "© ᴘᴏᴡᴇʀᴅ ʙʏ ʀᴏᴍᴇᴋ-xᴅ",
             }),
             header: proto.Message.InteractiveMessage.Header.create({
               ...(await prepareWAMessageMedia({ image: buffer }, { upload: Matrix.waUploadToServer })),
               title: ``,
               gifPlayback: false,
               subtitle: "",
-              hasMediaAttachment: false
-            }),
-            nativeFlowMessage: proto.Message.InteractiveMessage.NativeFlowMessage.create({
-              buttons
+              hasMediaAttachment: false,
             }),
             contextInfo: {
               quotedMessage: m.message,
@@ -84,16 +62,17 @@ _________________________________________
               forwardedNewsletterMessageInfo: {
                 newsletterJid: '120363321472746562@newsletter',
                 newsletterName: "𝐑𝐎𝐌𝐄𝐊 𝐗𝐃",
-                serverMessageId: 143
-              }
-            }
+                serverMessageId: 143,
+              },
+            },
           }),
         },
       },
     }, {});
 
-    await Matrix.relayMessage(msg.key.remoteJid, msg.message, {
-      messageId: msg.key.id
+    // Send message to the JID
+    await Matrix.relayMessage(jid, msg.message, {
+      messageId: msg.key.id,
     });
   }
 };
